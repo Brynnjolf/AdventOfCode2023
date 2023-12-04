@@ -3,11 +3,13 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <map>
 
 
 std::string numbers = "0123456789";
+std::map<std::pair<int,int>, std::vector<int>> gearLocations = {};
 
-bool check(std::vector<std::string>& schematic, int row, int col) {
+bool check(std::vector<std::string>& schematic, int row, int col, int rootNum) {
     if(row < 0 || row >= schematic.size() || col < 0 || col >= schematic[0].size()) {
         return false;
     }
@@ -18,7 +20,15 @@ bool check(std::vector<std::string>& schematic, int row, int col) {
         return false;
     }
 
-    schematic[row][col] = 'X';
+    if(schematic[row][col] == '*') {
+        if(gearLocations.count({row,col}) > 0) {
+            gearLocations.at({row,col}).push_back(rootNum);
+        } else {
+            std::pair<int,int> coords = {row,col};
+            std::vector<int> numasvec = {rootNum};
+            gearLocations.emplace(coords, numasvec);
+        }
+    }
 
     return true;
 }
@@ -39,8 +49,12 @@ bool checkPerimeter(std::vector<std::string>& schematic, int row, int left, int 
     coordsToCheck.push_back({row-1, right});
     coordsToCheck.push_back({row+1, right});
 
+
+    std::string substr = schematic[row].substr(left, right-left);
+    int num = std::stoi(substr);
+
     for(auto& coord : coordsToCheck) {
-        if(check(schematic, coord[0], coord[1])) {
+        if(check(schematic, coord[0], coord[1], num)) {
             return true;
         }
     }
@@ -48,7 +62,7 @@ bool checkPerimeter(std::vector<std::string>& schematic, int row, int left, int 
     return false;
 }
 
-int solve(std::filesystem::path filePath) {
+void solve(std::filesystem::path filePath, int& result, int& gear_ratio) {
     std::ifstream file(filePath);
     std::string inputLine;
 
@@ -62,7 +76,6 @@ int solve(std::filesystem::path filePath) {
         std::cout << "failed to open file\n";
     }
 
-    int result = 0;
 
     for(int i = 0; i < schematic.size(); i++) {
         int left = schematic[i].find_first_of(numbers);
@@ -78,11 +91,19 @@ int solve(std::filesystem::path filePath) {
 
     }
 
-    return result;
+    for(auto& [gearCoords, gearNumbers] : gearLocations) {
+       if(gearNumbers.size() == 2)  {
+           gear_ratio += gearNumbers[0] * gearNumbers[1];
+       }
+    }
 }
 
 int main() {
-    int result = solve("../../inputDay3.txt");
+    int result = 0;
+    int gear_ratio = 0;
+    solve("../../inputDay3.txt", result, gear_ratio);
     std::cout << result << std::endl;
+    std::cout << gear_ratio << std::endl;
+
     return 0;
 }
