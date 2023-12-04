@@ -1,12 +1,17 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <numeric>
+#include <queue>
 #include <sstream>
 #include <string>
 #include <filesystem>
+#include <utility>
 #include <vector>
 
-int getPointValue(std::string line) {
+typedef std::vector<std::pair<std::vector<int>,std::vector<int>>> Game;
+
+void parseLine(std::string line, Game& game) {
     int left = line.find(":");
     int middle = line.find("|");
     std::string winningNumsStr = line.substr(left+2, middle-left-3);
@@ -26,39 +31,60 @@ int getPointValue(std::string line) {
         playerNums.push_back(item);
     }
 
-    int points = 0;
-    for(int currNum : playerNums) {
-        if(std::find(winningNums.begin(), winningNums.end(), currNum) != winningNums.end()) {
-            if(points == 0) {
-                points++;
-            } else {
-                points *= 2;
-            }
+    game.push_back(std::make_pair(winningNums, playerNums));
+}
+
+int processCard(Game game, int card) {
+    std::vector<int> winningNums = game[card].first;
+    std::vector<int> playerNums = game[card].second;
+
+    int newCards = 0;
+    for(int curr : playerNums) {
+        if(std::find(winningNums.begin(), winningNums.end(), curr) != winningNums.end()) {
+            newCards++;
         }
     }
 
-    return points;
+    return newCards;
 }
 
 int solve(std::filesystem::path filePath) {
     std::ifstream file(filePath);
     std::string line;
 
+    Game game;
     int result = 0;
 
     if(file.is_open()) {
         while(std::getline(file, line)) {
-            result += getPointValue(line);
+            parseLine(line, game);
         }
     } else {
         std::cout << "failed to open file!\n";
     }
 
-    return result;
+    std::vector<int> numberCounts(game.size(), 1);
+
+    for(int i = 0; i < game.size(); i++) {
+        std::vector<int>& winningNums = game[i].first;
+        std::vector<int>& playerNums = game[i].second;
+
+        for(int j = 0; j < numberCounts[i]; j++) {
+            int offset = 1;
+            for(int curr : playerNums) {
+                if((i+offset) < game.size() && std::find(winningNums.begin(), winningNums.end(), curr) != winningNums.end()) {
+                    numberCounts[i+offset]++;
+                    offset++;
+                }
+            }
+
+        }
+    }
+
+    return std::accumulate(numberCounts.begin(), numberCounts.end(), 0);
 }
 
 int main() {
-    
     std::cout << solve("../../inputDay4.txt") << std::endl;
     return 0;
 }
